@@ -14,6 +14,14 @@
     <name>hive.metastore.warehouse.dir</name>
     <value>${coral.spark.test.dir}/warehouse</value>
   </property>
+  <!--  <property>-->
+  <!--    <name>hive.metastore.uris</name>-->
+  <!--    <value>thrift://SQBHXQ-nzoth-10-206-66-69.hadoop.jd.local:9001,thrift://SQBHXQ-nzoth-10-206-66-106.hadoop.jd.local:9001</value>-->
+  <!--  </property>-->
+  <!--  <property>-->
+  <!--    <name>hive.metastore.warehouse.dir</name>-->
+  <!--    <value>hdfs://ns1/user/dd_edw</value>-->
+  <!--  </property>-->
   <property>
     <name>javax.jdo.option.ConnectionDriverName</name>
     <value>org.apache.derby.jdbc.EmbeddedDriver</value>

@@ -7,10 +7,7 @@ package com.linkedin.coral.hive.hive2rel.parsetree.parser;
 
 import java.util.ArrayList;
 
-import org.antlr.runtime.CharStream;
-import org.antlr.runtime.NoViableAltException;
-import org.antlr.runtime.RecognitionException;
-import org.antlr.runtime.TokenRewriteStream;
+import org.antlr.runtime.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -18,7 +15,7 @@ import org.apache.commons.logging.LogFactory;
 public class CoralParseDriver extends ParseDriver {
 
   private static final Log LOG =
-      LogFactory.getLog("com.linkedin.coral.hive.hive2rel.parsetree.parser.CoralParseDriver");
+          LogFactory.getLog("com.linkedin.coral.hive.hive2rel.parsetree.parser.CoralParseDriver");
 
   @Override
   public ASTNode parse(String command) throws ParseException {
@@ -42,6 +39,9 @@ public class CoralParseDriver extends ParseDriver {
       LOG.debug("Parse Completed");
     } else if (lexer.getErrors().size() != 0) {
       throw new ParseException(lexer.getErrors());
+      // add by myw
+    } else if(parser.errors.size() == 1 && parser.errors.get(0).getRecognitionException() instanceof MissingTokenException) {
+      LOG.debug("忽略检测token不匹配异常");
     } else {
       throw new ParseException(parser.errors);
     }

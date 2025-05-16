@@ -23,6 +23,7 @@ import org.apache.calcite.sql.SqlPrefixOperator;
 import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlUnresolvedFunction;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.type.SqlOperandTypeChecker;
 import org.apache.calcite.sql.type.SqlTypeFamily;
 import org.apache.calcite.sql.validate.SqlUserDefinedFunction;
@@ -36,6 +37,7 @@ import com.linkedin.coral.common.functions.FunctionRegistry;
 import com.linkedin.coral.common.functions.UnknownSqlFunctionException;
 
 import static com.google.common.base.Preconditions.*;
+import static com.linkedin.coral.hive.hive2rel.functions.CoalesceStructUtility.COALESCE_STRUCT_FUNCTION_RETURN_STRATEGY;
 import static org.apache.calcite.sql.parser.SqlParserPos.*;
 import static org.apache.calcite.sql.type.OperandTypes.*;
 
@@ -70,7 +72,7 @@ public class HiveFunctionResolver {
       return SqlStdOperatorTable.NOT;
     }
     List<SqlOperator> matches = operators.stream()
-        .filter(o -> o.getName().equalsIgnoreCase(name) && o instanceof SqlPrefixOperator).collect(Collectors.toList());
+            .filter(o -> o.getName().equalsIgnoreCase(name) && o instanceof SqlPrefixOperator).collect(Collectors.toList());
     checkState(matches.size() == 1, "%s operator %s", matches.isEmpty() ? "Unknown" : "Ambiguous", name);
     return matches.get(0);
   }
@@ -84,7 +86,7 @@ public class HiveFunctionResolver {
   public SqlOperator resolveBinaryOperator(String name) {
     final String lowerCaseOperator = name.toLowerCase();
     List<SqlOperator> matches = operators.stream().filter(o -> o.getName().toLowerCase().equals(lowerCaseOperator)
-        && (o instanceof SqlBinaryOperator || o instanceof SqlSpecialOperator)).collect(Collectors.toList());
+            && (o instanceof SqlBinaryOperator || o instanceof SqlSpecialOperator)).collect(Collectors.toList());
     if (matches.size() == 0) {
       Function f = tryResolve(lowerCaseOperator, null, 2);
       if (f != null) {
@@ -121,14 +123,18 @@ public class HiveFunctionResolver {
    * @throws UnknownSqlFunctionException if the function name can not be resolved.
    */
   public Function tryResolve(@Nonnull String originalViewTextFunctionName, @Nullable Table hiveTable,
-      int numOfOperands) {
+                             int numOfOperands) {
     checkNotNull(originalViewTextFunctionName);
     Collection<Function> functions = registry.lookup(originalViewTextFunctionName);
     if (functions.isEmpty() && hiveTable != null) {
       functions = tryResolveAsDaliFunction(originalViewTextFunctionName, hiveTable, numOfOperands);
     }
     if (functions.isEmpty()) {
-      throw new UnknownSqlFunctionException(originalViewTextFunctionName);
+      // add by myw
+      SqlUserDefinedFunction sqlUserDefinedFunction = new SqlUserDefinedFunction(
+              new SqlIdentifier(originalViewTextFunctionName, ZERO), COALESCE_STRUCT_FUNCTION_RETURN_STRATEGY, null,
+              or(ANY, family(SqlTypeFamily.ANY, SqlTypeFamily.INTEGER)), null, null);
+      return new Function(originalViewTextFunctionName, sqlUserDefinedFunction);
     }
     if (functions.size() == 1) {
       return functions.iterator().next();
@@ -171,7 +177,7 @@ public class HiveFunctionResolver {
    * @throws UnknownSqlFunctionException if the function name is in Dali function name format but there is no mapping
    */
   public Collection<Function> tryResolveAsDaliFunction(String originalViewTextFunctionName, @Nonnull Table table,
-      int numOfOperands) {
+                                                       int numOfOperands) {
     Preconditions.checkNotNull(table);
     String functionPrefix = String.format("%s_%s_", table.getDbName(), table.getTableName());
     if (!originalViewTextFunctionName.toLowerCase().startsWith(functionPrefix.toLowerCase())) {
@@ -190,7 +196,7 @@ public class HiveFunctionResolver {
     final Collection<Function> functions = registry.lookup(removeVersioningPrefix(functionClassName));
     if (functions.isEmpty()) {
       Collection<Function> dynamicResolvedFunctions =
-          resolveDaliFunctionDynamically(originalViewTextFunctionName, functionClassName, hiveTable, numOfOperands);
+              resolveDaliFunctionDynamically(originalViewTextFunctionName, functionClassName, hiveTable, numOfOperands);
 
       if (dynamicResolvedFunctions.isEmpty()) {
         // we want to see class name in the exception message for coverage testing
@@ -202,10 +208,10 @@ public class HiveFunctionResolver {
     }
 
     return functions.stream()
-        .map(f -> new Function(f.getFunctionName(),
-            new VersionedSqlUserDefinedFunction((SqlUserDefinedFunction) f.getSqlOperator(),
-                hiveTable.getDaliUdfDependencies(), originalViewTextFunctionName, functionClassName)))
-        .collect(Collectors.toList());
+            .map(f -> new Function(f.getFunctionName(),
+                    new VersionedSqlUserDefinedFunction((SqlUserDefinedFunction) f.getSqlOperator(),
+                            hiveTable.getDaliUdfDependencies(), originalViewTextFunctionName, functionClassName)))
+            .collect(Collectors.toList());
   }
 
   public void addDynamicFunctionToTheRegistry(String functionClassName, Function function) {
@@ -215,16 +221,16 @@ public class HiveFunctionResolver {
   }
 
   private @Nonnull Collection<Function> resolveDaliFunctionDynamically(String originalViewTextFunctionName,
-      String functionClassName, HiveTable hiveTable, int numOfOperands) {
+                                                                       String functionClassName, HiveTable hiveTable, int numOfOperands) {
     if (dynamicFunctionRegistry.contains(functionClassName)) {
       return ImmutableList.of(dynamicFunctionRegistry.get(originalViewTextFunctionName));
     }
     Function function = new Function(functionClassName,
-        new VersionedSqlUserDefinedFunction(
-            new SqlUserDefinedFunction(new SqlIdentifier(functionClassName, ZERO),
-                new HiveGenericUDFReturnTypeInference(functionClassName, hiveTable.getDaliUdfDependencies()), null,
-                createSqlOperandTypeChecker(numOfOperands), null, null),
-            hiveTable.getDaliUdfDependencies(), originalViewTextFunctionName, functionClassName));
+            new VersionedSqlUserDefinedFunction(
+                    new SqlUserDefinedFunction(new SqlIdentifier(functionClassName, ZERO),
+                            new HiveGenericUDFReturnTypeInference(functionClassName, hiveTable.getDaliUdfDependencies()), null,
+                            createSqlOperandTypeChecker(numOfOperands), null, null),
+                    hiveTable.getDaliUdfDependencies(), originalViewTextFunctionName, functionClassName));
     dynamicFunctionRegistry.put(functionClassName, function);
     return ImmutableList.of(function);
   }
@@ -232,7 +238,7 @@ public class HiveFunctionResolver {
   private @Nonnull Function unresolvedFunction(String functionName) {
     SqlIdentifier funcIdentifier = new SqlIdentifier(ImmutableList.of(functionName), ZERO);
     return new Function(functionName,
-        new SqlUnresolvedFunction(funcIdentifier, null, null, null, null, SqlFunctionCategory.USER_DEFINED_FUNCTION));
+            new SqlUnresolvedFunction(funcIdentifier, null, null, null, null, SqlFunctionCategory.USER_DEFINED_FUNCTION));
   }
 
   private @Nonnull SqlOperandTypeChecker createSqlOperandTypeChecker(int numOfOperands) {

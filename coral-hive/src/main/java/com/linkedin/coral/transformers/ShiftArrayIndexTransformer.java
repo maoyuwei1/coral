@@ -32,10 +32,11 @@ public class ShiftArrayIndexTransformer extends SqlCallTransformer {
 
   @Override
   public boolean condition(SqlCall sqlCall) {
-    if (ITEM_OPERATOR.equalsIgnoreCase(sqlCall.getOperator().getName())) {
-      final SqlNode columnNode = sqlCall.getOperandList().get(0);
-      return deriveRelDatatype(columnNode) instanceof ArraySqlType;
-    }
+    // add by myw 数组类型不做检测
+//    if (ITEM_OPERATOR.equalsIgnoreCase(sqlCall.getOperator().getName())) {
+//      final SqlNode columnNode = sqlCall.getOperandList().get(0);
+//      return deriveRelDatatype(columnNode) instanceof ArraySqlType;
+//    }
     return false;
   }
 
@@ -44,13 +45,13 @@ public class ShiftArrayIndexTransformer extends SqlCallTransformer {
     final SqlNode itemNode = sqlCall.getOperandList().get(1);
     SqlNode newIndex;
     if (itemNode instanceof SqlNumericLiteral
-        && deriveRelDatatype(itemNode).getSqlTypeName().equals(SqlTypeName.INTEGER)) {
+            && deriveRelDatatype(itemNode).getSqlTypeName().equals(SqlTypeName.INTEGER)) {
       final Integer value = ((SqlNumericLiteral) itemNode).getValueAs(Integer.class);
       newIndex =
-          SqlNumericLiteral.createExactNumeric(new BigDecimal(value + 1).toString(), itemNode.getParserPosition());
+              SqlNumericLiteral.createExactNumeric(new BigDecimal(value + 1).toString(), itemNode.getParserPosition());
     } else {
       newIndex = SqlStdOperatorTable.PLUS.createCall(itemNode.getParserPosition(), itemNode,
-          SqlNumericLiteral.createExactNumeric("1", SqlParserPos.ZERO));
+              SqlNumericLiteral.createExactNumeric("1", SqlParserPos.ZERO));
     }
     // Create new object instead of modifying the old SqlCall to avoid transforming the same object
     // multiple times if it appears multiple times in SqlNode

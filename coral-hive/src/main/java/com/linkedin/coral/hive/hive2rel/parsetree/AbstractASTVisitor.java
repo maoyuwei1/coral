@@ -301,7 +301,20 @@ public abstract class AbstractASTVisitor<R, C> {
 
       case HiveParser.KW_CURRENT:
         return visitCurrentRow(node, ctx);
-
+      // add by myw
+      case HiveParser.TOK_LIKETABLE:
+        return null;
+      case HiveParser.TOK_CREATETABLE:
+        Node query = node.getChildren().stream().filter(n -> n.getName().equals("811")).findFirst().get();
+        return this.visitQueryNode((ASTNode) query, ctx);
+      // add by myw 解决 group set 语法
+      case HiveParser.TOK_GROUPING_SETS:
+        return visitGroupBy(node, ctx);
+      case HiveParser.TOK_GROUPING_SETS_EXPRESSION:
+        return visitIdentifier(node, ctx);
+      // add by myw 解决 insert into 语法，同样，写表名和写入的分区值想解析的话，再深入遍历Children
+      case HiveParser.TOK_INSERT_INTO:
+        return null;
       default:
         // return visitChildren(node, ctx);
         throw new UnhandledASTTokenException(node);
@@ -347,7 +360,7 @@ public abstract class AbstractASTVisitor<R, C> {
 
   protected List<R> visitChildrenByType(List<Node> nodes, C ctx, int nodeType) {
     return nodes.stream().filter(node -> ((ASTNode) node).getType() == nodeType).map(n -> visit((ASTNode) n, ctx))
-        .collect(Collectors.toList());
+            .collect(Collectors.toList());
   }
 
   protected R visitTabAlias(ASTNode node, C ctx) {

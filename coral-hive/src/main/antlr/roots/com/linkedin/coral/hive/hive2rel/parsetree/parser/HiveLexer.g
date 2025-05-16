@@ -384,6 +384,12 @@ RegexComponent
     | BITWISEXOR | BITWISEOR | DOLLAR
     ;
 
+fragment
+ChineseCh
+    :
+    ('\u4e00'..'\u9fa5' | '\uF900'..'\uFA2D' | '\uB0A1'..'\uF7FE')+
+    ;
+
 StringLiteral
     :
     ( '\'' ( ~('\''|'\\') | ('\\' .) )* '\''
@@ -450,7 +456,7 @@ An Identifier can be:
 */
 Identifier
     :
-    (Letter | Digit) (Letter | Digit | '_')*
+    (Letter | Digit | ChineseCh ) (Letter | Digit | ChineseCh | '_')*
     | {allowQuotedId()}? QuotedIdentifier  /* though at the language level we allow all Identifiers to be QuotedIdentifiers;
                                               at the API level only columns are allowed to be of this form */
     | '`' RegexComponent+ '`'

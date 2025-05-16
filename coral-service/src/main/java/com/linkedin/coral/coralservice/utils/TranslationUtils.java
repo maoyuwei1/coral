@@ -28,12 +28,24 @@ public class TranslationUtils {
     return new RelToTrinoConverter(hiveMetastoreClient).convert(relNode);
   }
 
+  /**
+   * 将Hive SQL语句转为Spark SQL语句
+   * @param query
+   * @return
+   */
   public static String translateHiveToSpark(String query) {
     RelNode relNode = new HiveToRelConverter(hiveMetastoreClient).convertSql(query);
     CoralSpark coralSpark = CoralSpark.create(relNode, hiveMetastoreClient);
     return coralSpark.getSparkSql();
   }
 
+  /**
+   *
+   * @param query 查询SQL
+   * @param sourceLanguage  SQL的来源语言
+   * @param targetLanguage  SQL的目标语言
+   * @return
+   */
   public static String translateQuery(String query, String sourceLanguage, String targetLanguage) {
     String translatedSql = null;
 

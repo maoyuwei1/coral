@@ -2157,7 +2157,7 @@ withClause
 cteStatement
    :
    identifier KW_AS LPAREN queryStatementExpression[false] RPAREN
-   -> ^(TOK_SUBQUERY queryStatementExpression identifier)
+   -> ^(TOK_SUBQUERY queryStatementExpression identifier?)
 ;
 
 fromStatement[boolean topLevel]

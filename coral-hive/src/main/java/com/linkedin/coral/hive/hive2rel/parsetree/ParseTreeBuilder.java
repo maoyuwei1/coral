@@ -40,7 +40,9 @@ import org.apache.calcite.sql.SqlWith;
 import org.apache.calcite.sql.SqlWithItem;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeFamily;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.validate.SqlUserDefinedFunction;
 import org.apache.hadoop.hive.metastore.api.Table;
 
 import com.linkedin.coral.com.google.common.collect.ImmutableList;
@@ -61,8 +63,10 @@ import com.linkedin.coral.hive.hive2rel.parsetree.parser.ParseDriver;
 import com.linkedin.coral.hive.hive2rel.parsetree.parser.ParseException;
 
 import static com.google.common.base.Preconditions.checkState;
+import static com.linkedin.coral.hive.hive2rel.functions.CoalesceStructUtility.COALESCE_STRUCT_FUNCTION_RETURN_STRATEGY;
 import static java.lang.String.format;
 import static org.apache.calcite.sql.parser.SqlParserPos.ZERO;
+import static org.apache.calcite.sql.type.OperandTypes.*;
 
 
 /**
@@ -185,10 +189,10 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
    */
   private SqlNode visitLateralViewUDTF(List<SqlNode> sqlNodes, List<SqlNode> aliasOperands, SqlCall tableFunctionCall) {
     SqlNode lateralCall = SqlStdOperatorTable.LATERAL.createCall(ZERO,
-        new SqlLateralOperator(SqlKind.COLLECTION_TABLE).createCall(ZERO, tableFunctionCall));
+            new SqlLateralOperator(SqlKind.COLLECTION_TABLE).createCall(ZERO, tableFunctionCall));
     final String functionName = tableFunctionCall.getOperator().getName();
     ImmutableList<String> fieldNames =
-        StaticHiveFunctionRegistry.UDTF_RETURN_FIELD_NAME_MAP.getOrDefault(functionName, null);
+            StaticHiveFunctionRegistry.UDTF_RETURN_FIELD_NAME_MAP.getOrDefault(functionName, null);
     if (fieldNames == null) {
       throw new RuntimeException("User defined table function " + functionName + " is not registered.");
     }
@@ -198,11 +202,11 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     fieldNames.forEach(name -> asOperands.add(new SqlIdentifier(name, ZERO)));
     SqlCall aliasCall = SqlStdOperatorTable.AS.createCall(ZERO, asOperands);
     return new SqlJoin(ZERO, sqlNodes.get(1), SqlLiteral.createBoolean(false, ZERO), JoinType.COMMA.symbol(ZERO),
-        aliasCall/*lateralCall*/, JoinConditionType.NONE.symbol(ZERO), null);
+            aliasCall/*lateralCall*/, JoinConditionType.NONE.symbol(ZERO), null);
   }
 
   private SqlNode visitLateralViewExplode(List<SqlNode> sqlNodes, List<SqlNode> aliasOperands,
-      SqlCall tableFunctionCall, boolean isOuter) {
+                                          SqlCall tableFunctionCall, boolean isOuter) {
     final int operandCount = aliasOperands.size();
     // explode array if operandCount == 3: LATERAL VIEW EXPLODE(op0) op1 AS op2
     // explode map if operandCount == 4: LATERAL VIEW EXPLODE(op0) op1 AS op2, op3
@@ -214,7 +218,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     //   Note that `operandCount == 2 && isOuter` is not supported yet due to the lack of type information needed
     //   to derive the correct IF function parameters.
     checkState(operandCount == 2 || operandCount == 3 || operandCount == 4,
-        format("Unsupported LATERAL VIEW EXPLODE operand number: %d", operandCount));
+            format("Unsupported LATERAL VIEW EXPLODE operand number: %d", operandCount));
     // TODO The code below assumes LATERAL VIEW is used with UNNEST EXPLODE/POSEXPLODE only. It should be made more generic.
     SqlCall unnestCall = tableFunctionCall;
     SqlNode unnestOperand = unnestCall.operand(0);
@@ -222,25 +226,25 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
 
     if (isOuter) {
       checkState(operandCount > 2,
-          "LATERAL VIEW OUTER EXPLODE without column aliases is not supported. Add 'AS col' or 'AS key, value' to fix it");
+              "LATERAL VIEW OUTER EXPLODE without column aliases is not supported. Add 'AS col' or 'AS key, value' to fix it");
       // transforms unnest(b) to unnest( if(b is null or cardinality(b) = 0, ARRAY(null)/MAP(null, null), b))
       SqlNode operandIsNull = SqlStdOperatorTable.IS_NOT_NULL.createCall(ZERO, unnestOperand);
       SqlNode emptyArray = SqlStdOperatorTable.GREATER_THAN.createCall(ZERO,
-          SqlStdOperatorTable.CARDINALITY.createCall(ZERO, unnestOperand), SqlLiteral.createExactNumeric("0", ZERO));
+              SqlStdOperatorTable.CARDINALITY.createCall(ZERO, unnestOperand), SqlLiteral.createExactNumeric("0", ZERO));
       SqlNode ifCondition = SqlStdOperatorTable.AND.createCall(ZERO, operandIsNull, emptyArray);
       // array of [null] or map of (null, null) should be 3rd param to if function. With our type inference, calcite acts
       // smart and for unnest(array[null]) or unnest(map(null, null)) determines return type to be null
       SqlNode arrayOrMapOfNull;
       if (operandCount == 3
-          || (operator instanceof CoralSqlUnnestOperator && ((CoralSqlUnnestOperator) operator).withOrdinality)) {
+              || (operator instanceof CoralSqlUnnestOperator && ((CoralSqlUnnestOperator) operator).withOrdinality)) {
         arrayOrMapOfNull = SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(ZERO, SqlLiteral.createNull(ZERO));
       } else {
         arrayOrMapOfNull = SqlStdOperatorTable.MAP_VALUE_CONSTRUCTOR.createCall(ZERO, SqlLiteral.createNull(ZERO),
-            SqlLiteral.createNull(ZERO));
+                SqlLiteral.createNull(ZERO));
       }
       Function hiveIfFunction = functionResolver.tryResolve("if", null, 1);
       unnestOperand = hiveIfFunction.createCall(SqlLiteral.createCharString("if", ZERO),
-          ImmutableList.of(ifCondition, unnestOperand, arrayOrMapOfNull), null);
+              ImmutableList.of(ifCondition, unnestOperand, arrayOrMapOfNull), null);
     }
     unnestCall = operator.createCall(ZERO, unnestOperand);
 
@@ -256,7 +260,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
 
     // For POSEXPLODE case, we need to change the order of 2 alias. i.e. `pos, val` -> `val, pos` to be aligned with calcite validation
     if (operator instanceof CoralSqlUnnestOperator && ((CoralSqlUnnestOperator) operator).withOrdinality
-        && operandCount == 4) {
+            && operandCount == 4) {
       asOperands.add(aliasOperands.get(1));
       asOperands.add(aliasOperands.get(3));
       asOperands.add(aliasOperands.get(2));
@@ -266,7 +270,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     SqlNode as = SqlStdOperatorTable.AS.createCall(ZERO, asOperands);
 
     return new SqlJoin(ZERO, sqlNodes.get(1), SqlLiteral.createBoolean(false, ZERO), JoinType.COMMA.symbol(ZERO), as,
-        JoinConditionType.NONE.symbol(ZERO), null);
+            JoinConditionType.NONE.symbol(ZERO), null);
   }
 
   private SqlNode visitLateralViewJsonTuple(List<SqlNode> sqlNodes, List<SqlNode> aliasOperands, SqlCall sqlCall) {
@@ -295,34 +299,34 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
 
       // '$["jsonKey"]'
       SqlCall jsonPath = SqlStdOperatorTable.CONCAT.createCall(ZERO,
-          SqlStdOperatorTable.CONCAT.createCall(ZERO, SqlLiteral.createCharString("$[\"", ZERO), jsonKey),
-          SqlLiteral.createCharString("\"]", ZERO));
+              SqlStdOperatorTable.CONCAT.createCall(ZERO, SqlLiteral.createCharString("$[\"", ZERO), jsonKey),
+              SqlLiteral.createCharString("\"]", ZERO));
 
       SqlCall getJsonObjectCall =
-          getJsonObjectFunction.createCall(SqlLiteral.createCharString(getJsonObjectFunction.getFunctionName(), ZERO),
-              ImmutableList.of(jsonInput, jsonPath), null);
+              getJsonObjectFunction.createCall(SqlLiteral.createCharString(getJsonObjectFunction.getFunctionName(), ZERO),
+                      ImmutableList.of(jsonInput, jsonPath), null);
       // TODO Hive get_json_object returns a string, but currently is mapped in Trino to json_extract which returns a json. Once fixed, remove the CAST
       SqlCall castToString = SqlStdOperatorTable.CAST.createCall(ZERO, getJsonObjectCall,
-          // TODO This results in CAST to VARCHAR(65535), which may be too short, but there seems to be no way to avoid that.
-          //  even `new SqlDataTypeSpec(new SqlBasicTypeNameSpec(SqlTypeName.VARCHAR, Integer.MAX_VALUE - 1, ZERO), ZERO)` results in a limited VARCHAR precision.
-          createBasicTypeSpec(SqlTypeName.VARCHAR));
+              // TODO This results in CAST to VARCHAR(65535), which may be too short, but there seems to be no way to avoid that.
+              //  even `new SqlDataTypeSpec(new SqlBasicTypeNameSpec(SqlTypeName.VARCHAR, Integer.MAX_VALUE - 1, ZERO), ZERO)` results in a limited VARCHAR precision.
+              createBasicTypeSpec(SqlTypeName.VARCHAR));
       // TODO support jsonKey containing a quotation mark (") or backslash (\)
       SqlCall ifCondition =
-          HiveRLikeOperator.RLIKE.createCall(ZERO, jsonKey, SqlLiteral.createCharString("^[^\\\"]*$", ZERO));
+              HiveRLikeOperator.RLIKE.createCall(ZERO, jsonKey, SqlLiteral.createCharString("^[^\\\"]*$", ZERO));
       SqlCall ifFunctionCall = ifFunction.createCall(SqlLiteral.createCharString(ifFunction.getFunctionName(), ZERO),
-          ImmutableList.of(ifCondition, castToString, SqlLiteral.createNull(ZERO)), null);
+              ImmutableList.of(ifCondition, castToString, SqlLiteral.createNull(ZERO)), null);
       SqlNode projection = ifFunctionCall;
       // Currently only explicit aliasing is supported. Implicit alias would be c0, c1, etc.
       projections.add(SqlStdOperatorTable.AS.createCall(ZERO, projection, keyAlias));
     }
 
     SqlNode select =
-        new SqlSelect(ZERO, null, new SqlNodeList(projections, ZERO), null, null, null, null, null, null, null, null);
+            new SqlSelect(ZERO, null, new SqlNodeList(projections, ZERO), null, null, null, null, null, null, null, null);
     SqlNode lateral = SqlStdOperatorTable.LATERAL.createCall(ZERO, select);
     SqlCall lateralAlias = SqlStdOperatorTable.AS.createCall(ZERO,
-        ImmutableList.<SqlNode> builder().add(lateral).addAll(aliasOperands.subList(1, aliasOperands.size())).build());
+            ImmutableList.<SqlNode> builder().add(lateral).addAll(aliasOperands.subList(1, aliasOperands.size())).build());
     SqlNode joinNode = new SqlJoin(ZERO, sqlNodes.get(1), SqlLiteral.createBoolean(false, ZERO),
-        JoinType.COMMA.symbol(ZERO), lateralAlias, JoinConditionType.NONE.symbol(ZERO), null);
+            JoinType.COMMA.symbol(ZERO), lateralAlias, JoinConditionType.NONE.symbol(ZERO), null);
     return joinNode;
   }
 
@@ -369,7 +373,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     }
 
     return new SqlJoin(ZERO, children.get(0), SqlLiteral.createBoolean(false, ZERO), joinType.symbol(ZERO),
-        children.get(1), conditionType.symbol(ZERO), condition);
+            children.get(1), conditionType.symbol(ZERO), condition);
   }
 
   @Override
@@ -483,7 +487,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
       return visitBinaryOperator(node, ctx);
     } else {
       throw new RuntimeException(
-          String.format("Unhandled AST operator: %s with > 2 children, tree: %s", node.getText(), node.dump()));
+              String.format("Unhandled AST operator: %s with > 2 children, tree: %s", node.getText(), node.dump()));
     }
   }
 
@@ -525,9 +529,17 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
   protected SqlNode visitFunctionStar(ASTNode node, ParseContext ctx) {
     ASTNode functionNode = (ASTNode) node.getChildren().get(0);
     List<SqlOperator> functions = SqlStdOperatorTable.instance().getOperatorList().stream()
-        .filter(f -> functionNode.getText().equalsIgnoreCase(f.getName())).collect(Collectors.toList());
-    checkState(functions.size() == 1);
-    return new SqlBasicCall(functions.get(0), new SqlNode[] { new SqlIdentifier("", ZERO) }, ZERO);
+            .filter(f -> functionNode.getText().equalsIgnoreCase(f.getName())).collect(Collectors.toList());
+    // add by myw 解决自定义udf
+    if (functions.size() != 1) {
+      SqlUserDefinedFunction sqlUserDefinedFunction = new SqlUserDefinedFunction(
+              new SqlIdentifier(functionNode.getText(), ZERO), COALESCE_STRUCT_FUNCTION_RETURN_STRATEGY, null,
+              or(ANY, family(SqlTypeFamily.ANY, SqlTypeFamily.INTEGER)), null, null);
+      return new SqlBasicCall(sqlUserDefinedFunction, new SqlNode[] { new SqlIdentifier("", ZERO) }, ZERO);
+    }else {
+//    checkState(functions.size() == 1);
+      return new SqlBasicCall(functions.get(0), new SqlNode[] { new SqlIdentifier("", ZERO) }, ZERO);
+    }
   }
 
   @Override
@@ -547,8 +559,8 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     String functionName = functionNode.getText();
     List<SqlNode> sqlOperands = visitChildren(children, ctx);
     Function hiveFunction = functionResolver.tryResolve(functionName, ctx.hiveTable.orElse(null),
-        // The first element of sqlOperands is the operator itself. The actual # of operands is sqlOperands.size() - 1
-        sqlOperands.size() - 1);
+            // The first element of sqlOperands is the operator itself. The actual # of operands is sqlOperands.size() - 1
+            sqlOperands.size() - 1);
 
     // Special treatment for Window Function
     SqlNode lastSqlOperand = sqlOperands.get(sqlOperands.size() - 1);
@@ -561,7 +573,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
       //    SqlBasicCall("OVER") will have 2 children: "func" and SqlWindow
       /** See {@link #visitWindowSpec(ASTNode, ParseContext)} for SQL, AST Tree and SqlNode Tree examples */
       SqlNode func =
-          hiveFunction.createCall(sqlOperands.get(0), sqlOperands.subList(1, sqlOperands.size() - 1), quantifier);
+              hiveFunction.createCall(sqlOperands.get(0), sqlOperands.subList(1, sqlOperands.size() - 1), quantifier);
       SqlNode window = lastSqlOperand;
       return new SqlBasicCall(SqlStdOperatorTable.OVER, new SqlNode[] { func, window }, ZERO);
     }
@@ -628,7 +640,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
   protected SqlNode visitTabnameNode(ASTNode node, ParseContext ctx) {
     List<SqlNode> sqlNodes = visitChildren(node, ctx);
     List<String> names =
-        sqlNodes.stream().map(s -> ((SqlIdentifier) s).names).flatMap(List::stream).collect(Collectors.toList());
+            sqlNodes.stream().map(s -> ((SqlIdentifier) s).names).flatMap(List::stream).collect(Collectors.toList());
 
     return new SqlIdentifier(names, ZERO);
   }
@@ -753,7 +765,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
       }
     }
     SqlSelect select = new SqlSelect(ZERO, qc.keywords, qc.selects, qc.from, qc.where, qc.grpBy, qc.having, null,
-        qc.orderBy, null, qc.fetch);
+            qc.orderBy, null, qc.fetch);
     if (cte != null) {
       // Calcite uses "SqlWith(SqlNodeList of SqlWithItem, SqlSelect)" to represent queries with WITH
       /** See {@link #visitCTE(ASTNode, ParseContext) visitCTE} for details */
@@ -827,8 +839,8 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     if (node.getChildCount() == 2) {
       try {
         final SqlTypeNameSpec typeNameSpec = new SqlBasicTypeNameSpec(SqlTypeName.DECIMAL,
-            Integer.parseInt(((ASTNode) node.getChildren().get(0)).getText()),
-            Integer.parseInt(((ASTNode) node.getChildren().get(1)).getText()), ZERO);
+                Integer.parseInt(((ASTNode) node.getChildren().get(0)).getText()),
+                Integer.parseInt(((ASTNode) node.getChildren().get(1)).getText()), ZERO);
         return new SqlDataTypeSpec(typeNameSpec, ZERO);
       } catch (NumberFormatException e) {
         return createBasicTypeSpec(SqlTypeName.DECIMAL);
@@ -946,9 +958,9 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     SqlWindow window = windowRange != null ? windowRange : windowValues;
 
     return new SqlWindow(ZERO, null, null, partitionSpec == null ? SqlNodeList.EMPTY : partitionSpec.getPartitionList(),
-        partitionSpec == null ? SqlNodeList.EMPTY : partitionSpec.getOrderList(),
-        SqlLiteral.createBoolean(windowRange != null, ZERO), window == null ? null : window.getLowerBound(),
-        window == null ? null : window.getUpperBound(), null);
+            partitionSpec == null ? SqlNodeList.EMPTY : partitionSpec.getOrderList(),
+            SqlLiteral.createBoolean(windowRange != null, ZERO), window == null ? null : window.getLowerBound(),
+            window == null ? null : window.getUpperBound(), null);
   }
 
   @Override
@@ -956,7 +968,7 @@ public class ParseTreeBuilder extends AbstractASTVisitor<SqlNode, ParseTreeBuild
     SqlNode partitionList = visitOptionalChildByType(node, ctx, HiveParser.TOK_DISTRIBUTEBY);
     SqlNode orderList = visitOptionalChildByType(node, ctx, HiveParser.TOK_ORDERBY);
     return new SqlWindow(ZERO, null, null, partitionList != null ? (SqlNodeList) partitionList : SqlNodeList.EMPTY,
-        orderList != null ? (SqlNodeList) orderList : SqlNodeList.EMPTY, null, null, null, null);
+            orderList != null ? (SqlNodeList) orderList : SqlNodeList.EMPTY, null, null, null, null);
   }
 
   @Override
