@@ -1,0 +1,453 @@
+本地启动时，使用本地模式的话，要增加参数：--spring.profiles.active=localMetastore
+启动CoralServiceApplication.java
+
+前端项目要将coral-service/frotend 下的.env.local.example 复制到.env.local，并修改里面的配置。指定后端代理的ip和端口
+
+```sql
+-- SQL初始化
+CREATE TABLE IF NOT EXISTS
+    tmp.tmp_m99_mr_exe_log (
+                               `jobid` STRING COMMENT "jobid",
+                               `jobname` STRING COMMENT "jobname",
+                               `bee_source` STRING COMMENT "平台来源",
+                               `task_id` STRING COMMENT "task_id",
+                               `bee_businessid` STRING COMMENT "实例id",
+                               `action_id` STRING COMMENT "action_id",
+                               `bee_sn` STRING COMMENT "调度日志编号",
+                               `session_id` STRING COMMENT "hive会话id",
+                               `hql` STRING COMMENT "hql",
+                               `stage_id` STRING COMMENT "stage_id",
+                               `erp` STRING COMMENT "erp",
+                               `cluster_id` STRING COMMENT "集群",
+                               `jobuser` STRING COMMENT "Job所属用户",
+                               `jobqueue` STRING COMMENT "Job提交的Queue",
+                               `jobpriority` STRING COMMENT "Job优先级",
+                               `submithostaddress` STRING COMMENT "客户端提交ip",
+                               `finishedstatus` STRING COMMENT "Job完成状态",
+                               `container_total_num` STRING COMMENT "container总数(mr:map数,reduce数)",
+                               `container_success_num` STRING COMMENT "container成功数(mr:map成功数,reduce成功数)",
+                               `container_fail_num` STRING COMMENT "container失败数(mr:map失败数,reduce失败数)",
+                               `container_kill_num` STRING COMMENT "container被kill数(mr:map被kill数,reduce被kill数)",
+                               `total_long_s` DOUBLE COMMENT "总时长",
+                               `exe_long_s` DOUBLE COMMENT "总运行时长",
+                               `avg_long_s` DOUBLE COMMENT "container平均运行时长",
+                               `submitteddatetime` STRING COMMENT "Job提交时间",
+                               `launcheddatetime` STRING COMMENT "Job开始时间",
+                               `finisheddatetime` STRING COMMENT "Job完成时间",
+                               `gctime_s` DOUBLE COMMENT "gc time",
+                               `cpu_time_spent_s` DOUBLE COMMENT "Total CPU Time Spent",
+                               `readlocalfile_mbs` DOUBLE COMMENT "读入local文件系统节数",
+                               `writelocalfile_mbs` DOUBLE COMMENT "写入local文件系统字节数",
+                               `readhdfsfile_mbs` DOUBLE COMMENT "读入HDFS文件系统节数",
+                               `writehdfsfile_mbs` DOUBLE COMMENT "写入HDFS文件系统字节数",
+                               `hdfsreadops` DOUBLE COMMENT "读HDFS文件的次数",
+                               `hdfswriteops` DOUBLE COMMENT "写HDFS文件的次数",
+                               `avg_read_mbs` DOUBLE COMMENT "平均读取的数据量",
+                               `rw_total_mbs` DOUBLE COMMENT "总读取的数据量",
+                               `loc_data_map` DOUBLE COMMENT "map本地化数",
+                               `physicalmemory_mbs` DOUBLE COMMENT "使用的物理内存",
+                               `virtualmemory_mbs` DOUBLE COMMENT "使用的虚拟内存",
+                               `committedheap_mbs` DOUBLE COMMENT "使用的堆内存",
+                               `used_mem` DOUBLE COMMENT "实际使用内存",
+                               `sigcon_req_mem_mbs` STRING COMMENT "单个container申请内存",
+                               `sigcon_req_vcore` STRING COMMENT "单个container申请核数",
+                               `req_mem_mbs_s` DOUBLE COMMENT "总申请内存",
+                               `req_vcore_mbs_s` DOUBLE COMMENT "总申请核数",
+                               `input_dir` STRING COMMENT "输入路径",
+                               `output_dir` STRING COMMENT "输出路径",
+                               `inputrecords` DOUBLE COMMENT "输入行数",
+                               `outputrecords` DOUBLE COMMENT "输出行数",
+                               `sigcon_used_mem_mbs` STRING COMMENT "单个container使用内存(mr:单个map使用内存mb,单个reduce使用内存mb)"
+) partitioned by (dt string, job_type string)
+;
+
+CREATE TABLE IF NOT EXISTS
+    tmp.tmp_m99_spark_exe_log (
+                                  `appid` STRING COMMENT "app_id",
+                                  `app_name` STRING COMMENT "app_name",
+                                  `submit_client_id` STRING COMMENT "提交客户端ip",
+                                  `cluster_name` STRING COMMENT "集群",
+                                  `mart_code` STRING COMMENT "集市",
+                                  `queue_name` STRING COMMENT "队列",
+                                  `spark_resource_level` STRING COMMENT "资源等级",
+                                  `hadoop_user` STRING COMMENT "生产账号",
+                                  `bee_source` STRING COMMENT "平台来源",
+                                  `task_id` STRING COMMENT "task_id",
+                                  `action_id` STRING COMMENT "环节id",
+                                  `hql` STRING COMMENT "sql",
+                                  `bee_businessid` STRING COMMENT "实例id",
+                                  `bee_sn` STRING COMMENT "调度日志编号",
+                                  `app_status` STRING COMMENT "完成状态",
+                                  `erp_list` STRING COMMENT "提交任务erp",
+                                  `session_id` STRING COMMENT "session_id",
+                                  `submit_time` STRING COMMENT "任务提交时间",
+                                  `start_time` STRING COMMENT "任务开始时间",
+                                  `finish_time` STRING COMMENT "任务结束时间",
+                                  `pending_long` STRING COMMENT "pending时长",
+                                  `exe_long` STRING COMMENT "执行时长",
+                                  `sum_long` STRING COMMENT "总时长",
+                                  `container_sum_long` STRING COMMENT "Container执行总时长",
+                                  `input_dir` STRING COMMENT "输入目录",
+                                  `out_dir` STRING COMMENT "输出目录",
+                                  `input_table` STRING COMMENT "输入表",
+                                  `output_table` STRING COMMENT "输出表",
+                                  `hdfs_read_mb` DOUBLE COMMENT "读取HDFS大小(mb)",
+                                  `hdfs_write_mb` DOUBLE COMMENT "写入HDFS行数",
+                                  `hdfs_read_records` DOUBLE COMMENT "读取HDFS文件数",
+                                  `hdfs_write_records` DOUBLE COMMENT "写入HDFS文件数",
+                                  `hdfs_read_ops` DOUBLE COMMENT "读HDFS文件的次数",
+                                  `hdfs_write_ops` DOUBLE COMMENT "写HDFS文件的次数",
+                                  `sig_con_mem` STRING COMMENT "单个container申请内存(executor申请内存mb, driver申请内存mb)",
+                                  `sig_con_cpu` STRING COMMENT "单个container申请cpu(executor申请核数vcore, driver申请核数vcore)",
+                                  `sum_mem` DOUBLE COMMENT "总内存(mb)",
+                                  `sum_cpu` DOUBLE COMMENT "总核数(核)",
+                                  `req_mem` DOUBLE COMMENT "申请内存(mb*s)",
+                                  `req_cpu` DOUBLE COMMENT "申请cpu(核*s)",
+                                  `used_mem` DOUBLE COMMENT "实际使用内存(mb*s)",
+                                  `used_cpu` DOUBLE COMMENT "实际使用cpu",
+                                  `container_detail` STRING COMMENT "container分布格式(executor总数,driver总数)",
+                                  `sig_con_used_mem` STRING COMMENT "单个container使用内存(mb)",
+                                  `executorid_total` STRING COMMENT "Contianer总个数",
+                                  `executorid_active` STRING COMMENT "Active Contianer个数(executor active数, driver active数)",
+                                  `executorid_dead` STRING COMMENT "Dead Contianer个数(executor dead, driver dead)",
+                                  `totalgctime` STRING COMMENT "垃圾回收时间",
+                                  `driver_used_memory` STRING COMMENT "driver实际使用内存"
+) partitioned by(dt string,job_type string)
+;
+
+CREATE TABLE IF NOT EXISTS
+    dim.dim_jdr_plat_platdata_jsm_cluster_info_da (
+                                                      `idc` STRING COMMENT "机房",
+                                                      `phy_cluster_id` STRING COMMENT "物理集群ID",
+                                                      `jsm_phy_cluster_code` STRING COMMENT "jsm物理集群英文名",
+                                                      `phy_cluster_code` STRING COMMENT "原始物理集群英文名",
+                                                      `phy_cluster_name` STRING COMMENT "物理集群中文名",
+                                                      `logic_cluster_id` STRING COMMENT "逻辑集群ID",
+                                                      `logic_cluster_code` STRING COMMENT "逻辑集群英文名",
+                                                      `logic_cluster_name` STRING COMMENT "逻辑集群中文名",
+                                                      `cluster_v_deleted` STRING COMMENT "物理集群是否删除(0否1是)",
+                                                      `cluster_type` STRING COMMENT "集群类型:storage,computer",
+                                                      `bdp_cluster_id` STRING COMMENT "集群管理中集群ID",
+                                                      `idc_name` STRING COMMENT "机房中文名称",
+                                                      `ms_cluster` STRING COMMENT "元数据集群",
+                                                      `foreign_cluster` INT COMMENT "是否国外集群，1表示是，0表示否"
+) partitioned by (dt string)
+;
+
+CREATE TABLE IF NOT EXISTS
+    dim.dim_jdr_plat_platdata_jsm_account_info_da (
+                                                      `idc` STRING COMMENT "机房",
+                                                      `logic_storage_cluster_id` STRING COMMENT "逻辑存储集群ID",
+                                                      `logic_storage_cluster_code` STRING COMMENT "逻辑存储集群英文名",
+                                                      `logic_storage_cluster_name` STRING COMMENT "逻辑存储集群中文名",
+                                                      `is_default_logic_storage_cluster` STRING COMMENT "是否为默认逻辑存储集群",
+                                                      `phy_storage_cluster_id` STRING COMMENT "物理存储集群ID",
+                                                      `jsm_phy_storage_cluster_code` STRING COMMENT "jsm物理存储集群英文名",
+                                                      `phy_storage_cluster_code` STRING COMMENT "原始物理存储集群英文名",
+                                                      `phy_storage_cluster_name` STRING COMMENT "物理存储集群中文名",
+                                                      `parent_storage_cluster_code` STRING COMMENT "父集群code",
+                                                      `market_id` STRING COMMENT "集市id",
+                                                      `market_code` STRING COMMENT "集市code",
+                                                      `market_name` STRING COMMENT "集市中文名",
+                                                      `market_principal` STRING COMMENT "集市负责人erp（用于权限审批流）",
+                                                      `market_business_principal` STRING COMMENT "集市业务负责人erp（用于审批流）",
+                                                      `market_interface_principal` STRING COMMENT "集市接口负责人erp（用于审批流）",
+                                                      `biz_line_id` STRING COMMENT "业务线id",
+                                                      `biz_line_code` STRING COMMENT "业务线code",
+                                                      `biz_line_name` STRING COMMENT "业务线中文名",
+                                                      `v_ugdap_managed` STRING COMMENT "业务线是否上权限ugdap:1已上ugdap,0未上",
+                                                      `default_ns_code` STRING COMMENT "业务线默认NS",
+                                                      `ns_unique_code` STRING COMMENT "业务线配置ns",
+                                                      `biz_line_hdfs_quota_gb` DOUBLE COMMENT "业务线总存储配额-GB为单位",
+                                                      `biz_line_vcore_num` DOUBLE COMMENT "业务线总vcore配额",
+                                                      `biz_line_memory_mb` DOUBLE COMMENT "业务线总memory配额-MB为单位",
+                                                      `biz_line_machine_num` DOUBLE COMMENT "业务线机器数",
+                                                      `biz_line_merge_state` STRING COMMENT "业务线合并状态:未合并,已合并,合并中",
+                                                      `v_biz_line_show_out` STRING COMMENT "业务线是否对外可见:1在bdp产品可见,0在bdp产品不可见",
+                                                      `v_sensitive_biz_line` STRING COMMENT "是否敏感业务线：默认0非敏感，1敏感",
+                                                      `biz_line_status` STRING COMMENT "业务线状态:创建失败,正常,创建中,未创建账号,未创建队列",
+                                                      `v_biz_line_deleted` STRING COMMENT "业务线删除标识0未删除1已删除",
+                                                      `account_id` STRING COMMENT "账号id",
+                                                      `v_ide_default_account` STRING COMMENT "是否IDE默认账号",
+                                                      `account_code` STRING COMMENT "账号code唯一标识规则为用户填写账号code_主账号pin，全局唯一",
+                                                      `account_name` STRING COMMENT "账号中文名",
+                                                      `account_type` STRING COMMENT "账号类型:开发账号,普通生产账号,系统账号(指hadpadmin这些禁止外部申请使用的账号)，ide_sys账号",
+                                                      `account_role` STRING COMMENT "账号角色:普通用户,集市管理员,超级管理员",
+                                                      `user_key` STRING COMMENT "user_key",
+                                                      `account_principal` STRING COMMENT "账号负责人erp",
+                                                      `account_status` STRING COMMENT "账号状态:创建失败,正常,创建中,数据不准,全部为0",
+                                                      `account_env` STRING COMMENT "账号适用环境：生产环境，开发环境，生产环境+开发环境,目前未使用",
+                                                      `account_security_level` STRING COMMENT "账号安全等级：-1未设置，目前未使用",
+                                                      `logic_computer_cluster_id` STRING COMMENT "逻辑计算集群ID",
+                                                      `logic_computer_cluster_code` STRING COMMENT "逻辑计算集群英文名",
+                                                      `logic_computer_cluster_name` STRING COMMENT "逻辑计算集群中文名",
+                                                      `bdp_account_id` STRING COMMENT "bdp集群管理中账号id",
+                                                      `biz_line_principal` STRING COMMENT "业务线负责人",
+                                                      `biz_line_business_principal` STRING COMMENT "业务线业务负责人",
+                                                      `biz_line_interface_principal` STRING COMMENT "业务线接口负责人",
+                                                      `account_type_code` STRING COMMENT "账号类型code",
+                                                      `biz_line_bg` STRING COMMENT "账号所属业务体系code",
+                                                      `biz_line_bg_name` STRING COMMENT "账号所属业务体系中文名",
+                                                      `biz_line_bg_principal` STRING COMMENT "账号所属业务体系负责人",
+                                                      `ms_cluster_code` STRING COMMENT "元数据集群",
+                                                      `is_dapan_account` STRING COMMENT "是否大盘账号",
+                                                      `account_principal_one` STRING COMMENT "账号第一负责人",
+                                                      `account_principal_one_name` STRING COMMENT "账号负责人中文名称",
+                                                      `account_principal_one_email` STRING COMMENT "账号负责人邮箱",
+                                                      `account_principal_one_state` STRING COMMENT "账号负责人状态",
+                                                      `account_principal_one_job` STRING COMMENT "账号负责人岗位",
+                                                      `account_principal_one_organization_fullpath` STRING COMMENT "账号负责人组织全路径",
+                                                      `account_principal_one_organization_fullname` STRING COMMENT "账号负责人组织架构",
+                                                      `account_principal_one_organization_level` STRING COMMENT "账号负责人部门级别",
+                                                      `account_principal_one_type` STRING COMMENT "账号负责人类型",
+                                                      `account_principal_one_bgcode` STRING COMMENT "账号负责人子集团code",
+                                                      `account_principal_one_bgname` STRING COMMENT "账号负责人子集团",
+                                                      `account_principal_one_dept_1_code` STRING COMMENT "账号负责人一级部门code",
+                                                      `account_principal_one_dept_1_name` STRING COMMENT "账号负责人一级部门名称",
+                                                      `account_principal_one_dept_2_code` STRING COMMENT "账号负责人二级部门code",
+                                                      `account_principal_one_dept_2_name` STRING COMMENT "账号负责人二级部门名称",
+                                                      `account_principal_one_dept_3_code` STRING COMMENT "账号负责人三级部门code",
+                                                      `account_principal_one_dept_3_name` STRING COMMENT "账号负责人三级部门名称",
+                                                      `account_principal_one_dept_4_code` STRING COMMENT "账号负责人四级部门code",
+                                                      `account_principal_one_dept_4_name` STRING COMMENT "账号负责人四级部门名称",
+                                                      `account_principal_one_dept_5_code` STRING COMMENT "账号负责人五级部门code",
+                                                      `account_principal_one_dept_5_name` STRING COMMENT "账号负责人五级部门名称",
+                                                      `biz_line_principal_one` STRING COMMENT "业务线第一负责人",
+                                                      `biz_line_principal_one_name` STRING COMMENT "业务线负责人中文名称",
+                                                      `biz_line_principal_one_email` STRING COMMENT "业务线负责人邮箱",
+                                                      `biz_line_principal_one_state` STRING COMMENT "业务线负责人状态",
+                                                      `biz_line_principal_one_job` STRING COMMENT "业务线负责人岗位",
+                                                      `biz_line_principal_one_organization_fullpath` STRING COMMENT "业务线负责人组织全路径",
+                                                      `biz_line_principal_one_organization_fullname` STRING COMMENT "业务线负责人组织架构",
+                                                      `biz_line_principal_one_organization_level` STRING COMMENT "业务线负责人部门级别",
+                                                      `biz_line_principal_one_type` STRING COMMENT "业务线负责人类型",
+                                                      `biz_line_principal_one_bgcode` STRING COMMENT "业务线负责人子集团code",
+                                                      `biz_line_principal_one_bgname` STRING COMMENT "业务线负责人子集团",
+                                                      `biz_line_principal_one_dept_1_code` STRING COMMENT "业务线负责人一级部门code",
+                                                      `biz_line_principal_one_dept_1_name` STRING COMMENT "业务线负责人一级部门名称",
+                                                      `biz_line_principal_one_dept_2_code` STRING COMMENT "业务线负责人二级部门code",
+                                                      `biz_line_principal_one_dept_2_name` STRING COMMENT "业务线负责人二级部门名称",
+                                                      `biz_line_principal_one_dept_3_code` STRING COMMENT "业务线负责人三级部门code",
+                                                      `biz_line_principal_one_dept_3_name` STRING COMMENT "业务线负责人三级部门名称",
+                                                      `biz_line_principal_one_dept_4_code` STRING COMMENT "业务线负责人四级部门code",
+                                                      `biz_line_principal_one_dept_4_name` STRING COMMENT "业务线负责人四级部门名称",
+                                                      `biz_line_principal_one_dept_5_code` STRING COMMENT "业务线负责人五级部门code",
+                                                      `biz_line_principal_one_dept_5_name` STRING COMMENT "账号负责人五级部门名称",
+                                                      `v_account_deleted` STRING COMMENT "账号是否已经逻辑删除，0表示未删除1表示已删除",
+                                                      `auth_level_code` STRING COMMENT "账号权限等级：ZT20表示非大盘，ZT50表示普通大盘，ZT80表示财务大盘",
+                                                      `account_department_code` STRING COMMENT "账号所属部门code",
+                                                      `account_department_name` STRING COMMENT "账号所属部门名称",
+                                                      `account_principal_one_onstate` INT COMMENT "账号第一负责人是否在职",
+                                                      `biz_line_principal_one_onstate` INT COMMENT "业务线第一负责人是否在职"
+) partitioned by(dt string)
+;
+
+INSERT overwrite TABLE gdm.gdm_m99_job_run_log_tmp partition(dt,job_type)
+SELECT
+    jobid,
+    jobname,
+    bee_source,
+    task_id,
+    action_id,
+    bee_businessid,
+    bee_sn,
+    session_id,
+    hql,
+    stage_id,
+    erp,
+    cluster_dim.logic_cluster_code,
+    cluster_dim.phy_cluster_code,
+    jobuser,
+    nvl(u.mart_code,jobuser) as mart_code,
+    jobqueue,
+    jobpriority,
+    submithostaddress,
+    finishedstatus,
+    container_total_num,
+    container_success_num,
+    container_fail_num,
+    container_kill_num,
+    total_long_s,
+    exe_long_s,
+    avg_long_s,
+    submitteddatetime,
+    launcheddatetime,
+    finisheddatetime,
+    gctime_s,
+    cpu_time_spent_s,
+    readlocalfile_mbs,
+    writelocalfile_mbs,
+    readhdfsfile_mbs,
+    writehdfsfile_mbs,
+    hdfsreadops,
+    hdfswriteops,
+    used_mem,
+    sigcon_req_mem_mbs,
+    sigcon_req_vcore,
+    req_mem_mbs_s,
+    req_vcore_mbs_s,
+    input_dir,
+    output_dir,
+    inputrecords,
+    outputrecords,
+    input_table,
+    output_table,
+    sigcon_used_mem_mbs,
+    dt,
+    job_type
+FROM
+    (
+        SELECT
+            jobid,
+            jobname,
+            IF(COALESCE(bee_source,'')='', 'code-999999', upper(bee_source)) AS bee_source,
+            IF(task_id = 'no'
+                   OR task_id IS NULL, '', task_id) AS task_id,
+            IF(task_id = action_id
+                   OR action_id = 'no', '', action_id) AS action_id,
+            bee_businessid,
+            IF(bee_sn = 'no'
+                   OR bee_sn IS NULL, '', bee_sn) AS bee_sn,
+            session_id,
+            hql,
+            stage_id,
+            erp,
+            cluster_id,
+            jobuser as jobuser,
+            jobqueue,
+            jobpriority,
+            submithostaddress,
+            upper(finishedstatus) AS finishedstatus,
+            container_total_num,
+            container_success_num,
+            container_fail_num,
+            container_kill_num,
+            ROUND(cast(total_long_s as double), 6) AS total_long_s,
+            ROUND(cast(exe_long_s as double), 6) AS exe_long_s,
+            ROUND(cast(avg_long_s as double), 6) AS avg_long_s,
+            submitteddatetime,
+            launcheddatetime,
+            finisheddatetime,
+            ROUND(cast(gctime_s as double), 6) AS gctime_s,
+            ROUND(cpu_time_spent_s, 6) AS cpu_time_spent_s,
+            ROUND(readlocalfile_mbs, 6) AS readlocalfile_mbs,
+            ROUND(writelocalfile_mbs, 6) AS writelocalfile_mbs,
+            ROUND(readhdfsfile_mbs, 6) AS readhdfsfile_mbs,
+            ROUND(writehdfsfile_mbs, 6) AS writehdfsfile_mbs,
+            hdfsreadops,
+            hdfswriteops,
+            ROUND(used_mem, 6) AS used_mem,
+            sigcon_req_mem_mbs,
+            sigcon_req_vcore,
+            ROUND(req_mem_mbs_s, 6) AS req_mem_mbs_s,
+            ROUND(req_vcore_mbs_s, 6) AS req_vcore_mbs_s,
+            input_dir,
+            output_dir,
+            inputrecords,
+            outputrecords,
+            '' AS input_table,
+            '' AS output_table,
+            sigcon_used_mem_mbs,
+            dt,
+            job_type
+        FROM
+            tmp.tmp_m99_mr_exe_log
+        WHERE
+            dt = '2025-05-21'
+
+        UNION ALL
+
+        SELECT
+            appid,
+            app_name,
+            IF(COALESCE(bee_source,'')='', 'code-999999', upper(bee_source)) AS bee_source,
+            task_id,
+            action_id,
+            bee_businessid,
+            bee_sn,
+            session_id,
+            hql AS hql,
+            '' AS stage_id,
+            lower(erp_list) AS erp_list,
+            cluster_name,
+            hadoop_user as jobuser,
+            queue_name,
+            spark_resource_level,
+            submit_client_id,
+            upper(app_status) AS app_status,
+            container_detail,
+            executorid_active,
+            executorid_dead,
+            '0,0' AS container_kill_num,
+            ROUND(cast(sum_long as double), 6) AS total_long_s,
+            ROUND(cast(exe_long as double), 6) AS exe_long_s,
+            ROUND(sum_long / COALESCE(executorid_total, 1), 6) AS avg_long_s,
+            submit_time,
+            start_time,
+            finish_time,
+            cast(totalgctime as double) as gctime_s,
+            0 AS cpu_time_spent_s,
+            0 AS readlocalfile_mbs,
+            0 AS writelocalfile_mbs,
+            COALESCE(ROUND(hdfs_read_mb, 6), 0) AS hdfs_read_mb,
+            COALESCE(ROUND(hdfs_write_mb, 6), 0) AS hdfs_write_mb,
+            COALESCE(ROUND(hdfs_read_ops, 6), 0) AS hdfs_read_ops,
+            COALESCE(ROUND(hdfs_write_ops, 6), 0) AS hdfs_write_ops,
+            COALESCE(ROUND(used_mem, 6), 0) AS used_mem,
+            sig_con_mem,
+            sig_con_cpu,
+            ROUND(req_mem, 6) AS req_mem,
+            ROUND(req_cpu, 6) AS req_cpu,
+            input_dir,
+            out_dir,
+            ROUND(hdfs_read_records, 6) AS hdfs_read_records,
+            ROUND(hdfs_write_records, 6) AS hdfs_write_records,
+            input_table,
+            output_table,
+            concat(sig_con_used_mem,',',driver_used_memory),
+            dt,
+            job_type
+        FROM
+            tmp.tmp_m99_spark_exe_log
+        WHERE
+            dt = '2025-05-21'
+    )
+        run_log
+        LEFT JOIN
+    (
+        SELECT logic_cluster_code,phy_cluster_code FROM dim.dim_jdr_plat_platdata_jsm_cluster_info_da WHERE dt = '2025-05-21' and cluster_type = 'computer' group by logic_cluster_code,phy_cluster_code
+    )
+        cluster_dim
+    ON
+        run_log.cluster_id = cluster_dim.phy_cluster_code
+        LEFT join
+    (
+        SELECT account_code as user,biz_line_code as mart_code FROM dim.dim_jdr_plat_platdata_jsm_account_info_da WHERE dt= '2025-05-21' and v_account_deleted='0'
+        group by account_code,biz_line_code
+    ) u
+    on lower(run_log.jobuser) = lower(u.user)
+;
+
+CREATE TABLE employees (
+                           employee_id INT,
+                           first_name VARCHAR(50),
+                           last_name VARCHAR(50),
+                           department_id INT,
+                           salary DECIMAL(10, 2)
+)
+
+CREATE TABLE departments (
+                             department_id INT,
+                             department_name VARCHAR(100)
+)
+
+SELECT e.*
+FROM employees e
+         JOIN (
+    SELECT d.department_id, MAX(e.salary) AS max_salary
+    FROM employees e
+             JOIN departments d ON e.department_id = d.department_id
+    GROUP BY d.department_id
+) AS subquery
+     ON e.department_id = subquery.department_id AND e.salary = subquery.max_salary
+```

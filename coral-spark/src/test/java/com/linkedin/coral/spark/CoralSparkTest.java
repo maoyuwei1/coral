@@ -66,6 +66,183 @@ public class CoralSparkTest {
   }
 
   @Test
+  public void testSingleQuoteInsideSingleQuoteWithAlias() {
+    String sql = "SELECT\n" +
+            "  tt.cluster_code,\n" +
+            "  tt.source_db_name,\n" +
+            "  tt.source_tbl_name,\n" +
+            "  tt.source_tbl_comment,\n" +
+            "  tt.source_col_name,\n" +
+            "  tt.source_col_comment,\n" +
+            "  tt.use_db_name,\n" +
+            "  tt.use_tbl_name,\n" +
+            "  tt.use_tbl_comment,\n" +
+            "  tt.use_col_name,\n" +
+            "  tt.use_col_comment,\n" +
+            "  tt.use_channel,\n" +
+            "  tt.use_time,\n" +
+            "  tt.erp,\n" +
+            "  ep.email,\n" +
+            "  ep.dept_name,\n" +
+            "  tt.use_num\n" +
+            "FROM\n" +
+            "  (\n" +
+            "    SELECT\n" +
+            "      organization_fullname AS dept_name,\n" +
+            "      erp,\n" +
+            "      email\n" +
+            "    FROM\n" +
+            "      dim_m99_users_da\n" +
+            "    WHERE\n" +
+            "      dt = '2025-01-12'\n" +
+            "  )\n" +
+            "  ep\n" +
+            "RIGHT JOIN\n" +
+            "  (\n" +
+            "    SELECT\n" +
+            "      aa.cluster_code,\n" +
+            "      aa.source_db_name,\n" +
+            "      aa.source_tbl_name,\n" +
+            "      aa.source_tbl_comment,\n" +
+            "      aa.source_col_name,\n" +
+            "      aa.source_col_comment,\n" +
+            "      aa.depend_db_name AS use_db_name,\n" +
+            "      aa.depend_tbl_name AS use_tbl_name,\n" +
+            "      aa.depend_tbl_comment AS use_tbl_comment,\n" +
+            "      aa.depend_col_name AS use_col_name,\n" +
+            "      aa.depend_col_comment AS use_col_comment,\n" +
+            "      ua.bee_source AS use_channel,\n" +
+            "      ua.use_time,\n" +
+            "      CASE\n" +
+            "        WHEN COALESCE(aa.erp, '') = ''\n" +
+            "        THEN ua.erp\n" +
+            "        ELSE aa.erp\n" +
+            "      END erp,\n" +
+            "      ua.use_num\n" +
+            "    FROM\n" +
+            "      (\n" +
+            "        SELECT\n" +
+            "          og.col_id,\n" +
+            "          og.cluster_code,\n" +
+            "          og.source_db_name,\n" +
+            "          og.source_tbl_name,\n" +
+            "          og.source_tbl_comment,\n" +
+            "          CASE\n" +
+            "            WHEN COALESCE(lb.label_name, '') <> ''\n" +
+            "            THEN lb.label_name\n" +
+            "            ELSE og.source_col_name\n" +
+            "          END AS source_col_name,\n" +
+            "          CASE\n" +
+            "            WHEN COALESCE(lb.label_name, '') <> ''\n" +
+            "            THEN lb.label_desc\n" +
+            "            ELSE og.source_col_comment\n" +
+            "          END AS source_col_comment,\n" +
+            "          og.depend_db_name,\n" +
+            "          og.depend_tbl_name,\n" +
+            "          og.depend_tbl_comment,\n" +
+            "          og.depend_col_name,\n" +
+            "          og.depend_col_comment,\n" +
+            "          og.erp,\n" +
+            "          og.email,\n" +
+            "          og.dept_name,\n" +
+            "          og.parent_col_id\n" +
+            "        FROM\n" +
+            "          (\n" +
+            "            SELECT\n" +
+            "              col_id,\n" +
+            "              cluster_code,\n" +
+            "              source_db_name,\n" +
+            "              source_tbl_name,\n" +
+            "              source_tbl_comment,\n" +
+            "              source_col_name,\n" +
+            "              source_col_comment,\n" +
+            "              depend_db_name,\n" +
+            "              depend_tbl_name,\n" +
+            "              depend_tbl_comment,\n" +
+            "              depend_col_name,\n" +
+            "              depend_col_comment,\n" +
+            "              erp,\n" +
+            "              email,\n" +
+            "              dept_name,\n" +
+            "              parent_col_id\n" +
+            "            FROM\n" +
+            "              fdm_m99_col_lineage_affect_analysis_detail\n" +
+            "            WHERE\n" +
+            "              dt = '2025-01-12'\n" +
+            "          )\n" +
+            "          og\n" +
+            "        LEFT JOIN\n" +
+            "          (\n" +
+            "            SELECT\n" +
+            "              label_tbl,\n" +
+            "              'label_value' AS label_col,\n" +
+            "              label_name,\n" +
+            "              label_desc\n" +
+            "            FROM\n" +
+            "              dim_label_high\n" +
+            "          )\n" +
+            "          lb\n" +
+            "        ON\n" +
+            "          CONCAT(og.source_db_name, '.', og.source_tbl_name) = lb.label_tbl\n" +
+            "          AND og.source_col_name = lb.label_col\n" +
+            "          AND og.depend_col_name = lb.label_name\n" +
+            "      )\n" +
+            "      aa\n" +
+            "    JOIN\n" +
+            "      (\n" +
+            "        SELECT\n" +
+            "          cluster_code,\n" +
+            "          use_db_name,\n" +
+            "          use_tbl_name,\n" +
+            "          use_col_name,\n" +
+            "          use_time,\n" +
+            "          bee_source,\n" +
+            "          CASE\n" +
+            "            WHEN COALESCE(erp, '') = ''\n" +
+            "            THEN ''\n" +
+            "            ELSE split(erp, ',') [0]\n" +
+            "          END erp,\n" +
+            "          SUM(CAST(use_num AS INT)) use_num\n" +
+            "        FROM\n" +
+            "          gdm_m99_tbl_column_use_analysis_sum\n" +
+            "        WHERE\n" +
+            "          dt = '2025-01-12'\n" +
+            "        GROUP BY\n" +
+            "          cluster_code,\n" +
+            "          use_db_name,\n" +
+            "          use_tbl_name,\n" +
+            "          use_col_name,\n" +
+            "          use_time,\n" +
+            "          bee_source,\n" +
+            "          erp\n" +
+            "      )\n" +
+            "      ua\n" +
+            "    ON\n" +
+            "      aa.cluster_code = ua.cluster_code\n" +
+            "      AND aa.depend_db_name = ua.use_db_name\n" +
+            "      AND aa.depend_tbl_name = ua.use_tbl_name\n" +
+            "      AND aa.depend_col_name = ua.use_col_name\n" +
+            "  )\n" +
+            "  tt ON ep.erp = tt.erp";
+    sql = "SELECT\n" +
+            "\t\t\ttbl_name AS '表名'\n" +
+            "\t\tFROM\n" +
+            "\t\t\tadm.adm_m99_metadata_table_detail_info_da\n" +
+            "\t\tWHERE\n" +
+            "\t\t\tdt = '2025-04-15'";
+
+    try {
+      RelNode relNode = TestUtils.toRelNode(sql); // 第一步SQL转成RelNode
+//    RelNode relNode2 = TestUtils.getHiveMetastoreClient()
+      CoralSpark coralSpark = createCoralSpark(relNode); // 第二步将RelNode转成CoralSpark
+      String sparkSql = coralSpark.getSparkSql();
+      System.out.println(sparkSql);
+    }catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
   public void testGetBaseTablesFromView() {
     RelNode relNode = TestUtils.toRelNode("default", "foo_bar_view");
     CoralSpark coralSpark = createCoralSpark(relNode);
